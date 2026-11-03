@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApexCrypto - Brokerage & Trading Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for Live Crypto Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca'
+                        },
+                        tradeGreen: '#0ecb81',
+                        tradeRed: '#f6465d',
+                        darkBg: '#0b0e11',
+                        panelBg: '#181a20',
+                        borderBg: '#2b313a',
+                        hoverBg: '#2b313a'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #181a20; }
+        ::-webkit-scrollbar-thumb { background: #2b313a; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #474d57; }
+        .text-glow-green { text-shadow: 0 0 8px rgba(14, 203, 129, 0.4); }
+        .text-glow-red { text-shadow: 0 0 8px rgba(246, 70, 93, 0.4); }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-200 font-sans antialiased min-h-screen flex flex-col justify-between select-none">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="bg-panelBg border-b border-borderBg px-4 py-2.5 flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-2 cursor-pointer" onclick="switchView('trading')">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-indigo-500/30">
+                    A
+                </div>
+                <span class="text-xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-200 to-indigo-400">APEX<span class="text-indigo-500">EX</span></span>
+            </div>
+
+            <nav class="hidden md:flex items-center space-x-1">
+                <button onclick="switchView('trading')" id="nav-trading" class="px-3 py-1.5 rounded-md text-sm font-medium transition text-indigo-400 bg-indigo-500/10">Trading Desk</button>
+                <button onclick="switchView('portfolio')" id="nav-portfolio" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-400 hover:text-white transition">Portfolio Wallet</button>
+                <button onclick="switchView('broker')" id="nav-broker" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-400 hover:text-white transition hidden flex items-center space-x-1">
+                    <span>Broker Portal</span>
+                    <span class="bg-indigo-500/20 text-indigo-400 text-xs px-1.5 py-0.5 rounded border border-indigo-500/30">Pro</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Ticker Selector Header Widget -->
+        <div class="hidden xl:flex items-center space-x-6 text-xs bg-darkBg/50 px-4 py-1.5 rounded-lg border border-borderBg">
+            <div class="flex items-center space-x-2">
+                <span class="text-gray-400">Market:</span>
+                <select id="pairSelect" onchange="changePair(this.value)" class="bg-panelBg border border-borderBg rounded px-2 py-1 text-white font-bold cursor-pointer outline-none focus:border-indigo-500">
+                    <option value="BTCUSDT">BTC/USDT</option>
+                    <option value="ETHUSDT">ETH/USDT</option>
+                    <option value="SOLUSDT">SOL/USDT</option>
+                </select>
+            </div>
+            <div>
+                <span class="text-gray-400 block">24h Price</span>
+                <span id="tickerPrice" class="font-bold text-tradeGreen text-sm">$64,250.00</span>
+            </div>
+            <div>
+                <span class="text-gray-400 block">24h Change</span>
+                <span id="tickerChange" class="font-bold text-tradeGreen">+2.45%</span>
+            </div>
+            <div>
+                <span class="text-gray-400 block">24h High</span>
+                <span id="tickerHigh" class="text-gray-200 font-semibold">$65,100.00</span>
+            </div>
+            <div>
+                <span class="text-gray-400 block">24h Low</span>
+                <span id="tickerLow" class="text-gray-200 font-semibold">$62,800.00</span>
+            </div>
+        </div>
+
+        <!-- User Actions Header -->
+        <div class="flex items-center space-x-3">
+            <div id="auth-buttons" class="flex items-center space-x-2">
+                <button onclick="openAuthModal('login')" class="px-4 py-1.5 rounded-md text-sm font-semibold bg-gray-800 hover:bg-gray-700 text-white transition border border-borderBg">Log In</button>
+                <button onclick="openAuthModal('register')" class="px-4 py-1.5 rounded-md text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-600/20">Register</button>
+            </div>
+
+            <div id="user-profile" class="hidden flex items-center space-x-3">
+                <div class="text-right hidden sm:block">
+                    <div id="user-display-name" class="text-xs font-bold text-white">John Doe</div>
+                    <div class="flex items-center justify-end space-x-1 mt-0.5">
+                        <span id="user-role-badge" class="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Trader</span>
+                        <span id="user-kyc-badge" onclick="openKycModal()" class="text-[10px] px-1.5 py-0.2 rounded font-semibold cursor-pointer bg-red-500/20 text-red-400 border border-red-500/30 hover:opacity-80">Unverified</span>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 p-0.5 focus:outline-none">
+                        <div class="w-full h-full bg-panelBg rounded-full flex items-center justify-center font-bold text-indigo-400 hover:bg-opacity-80 transition">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                        </div>
+                    </button>
+                    <div class="absolute right-0 top-full mt-2 w-52 bg-panelBg border border-borderBg rounded-lg shadow-xl py-2 hidden group-hover:block z-50">
+                        <div class="px-4 py-2 border-b border-borderBg text-xs">
+                            <p class="text-gray-400">Signed in as</p>
+                            <p id="user-email-display" class="font-bold text-white truncate">trader@apex.com</p>
+                        </div>
+                        <a href="#" onclick="openKycModal()" class="block px-4 py-2 text-xs text-amber-400 hover:bg-borderBg font-semibold flex items-center justify-between">
+                            <span>KYC Verification</span>
+                            <span id="menu-kyc-status" class="text-[9px] px-1 rounded bg-amber-500/20">Action Required</span>
+                        </a>
+                        <a href="#" onclick="switchView('portfolio')" class="block px-4 py-2 text-xs text-gray-300 hover:bg-borderBg hover:text-white">Wallet Balances</a>
+                        <a href="#" onclick="switchView('broker')" id="menu-broker-link" class="hidden block px-4 py-2 text-xs text-indigo-400 hover:bg-borderBg font-semibold">Broker Portal</a>
+                        <button onclick="logout()" class="w-full text-left px-4 py-2 text-xs text-tradeRed hover:bg-borderBg font-semibold border-t border-borderBg mt-1">Log Out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col p-2 md:p-3 gap-3 overflow-x-hidden">
+
+        <!-- VIEW 1: TRADING DESK -->
+        <div id="view-trading" class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-2.5 h-full">
+            <div class="lg:col-span-8 flex flex-col gap-2.5">
+                <div class="bg-panelBg border border-borderBg rounded-xl p-3 flex-1 flex flex-col min-h-[380px]">
+                    <div class="flex flex-wrap items-center justify-between pb-3 border-b border-borderBg/60 gap-2">
+                        <div class="flex items-center space-x-3">
+                            <span id="chartSymbol" class="font-extrabold text-lg text-white">BTC/USDT</span>
+                            <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded border border-gray-700">Spot</span>
+                        </div>
+                        <div class="text-xs text-gray-400 flex items-center space-x-2">
+                            <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-tradeGreen mr-1.5 animate-pulse"></span> Live Feeds</span>
+                        </div>
+                    </div>
+                    <div class="relative flex-1 w-full mt-2 min-h-[280px]">
+                        <canvas id="cryptoChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-panelBg border border-borderBg rounded-xl p-3 h-60 flex flex-col">
+                    <div class="flex items-center justify-between border-b border-borderBg/60 pb-2 mb-2">
+                        <div class="flex space-x-4 text-xs font-bold">
+                            <button onclick="toggleOrderTab('open')" id="tab-open-orders" class="text-indigo-400 border-b-2 border-indigo-500 pb-2">Open Orders (<span id="open-orders-count">0</span>)</button>
+                            <button onclick="toggleOrderTab('history')" id="tab-order-history" class="text-gray-400 hover:text-white pb-2">Trade History</button>
+                        </div>
+                    </div>
+                    <div id="content-open-orders" class="flex-1 overflow-y-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="text-gray-500 sticky top-0 bg-panelBg">
+                                <tr>
+                                    <th class="pb-1">Time</th>
+                                    <th class="pb-1">Pair</th>
+                                    <th class="pb-1">Type</th>
+                                    <th class="pb-1">Side</th>
+                                    <th class="pb-1">Price</th>
+                                    <th class="pb-1">Amount</th>
+                                    <th class="pb-1 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="openOrdersTableBody" class="divide-y divide-borderBg/40 text-gray-300">
+                                <tr><td colspan="7" class="text-center py-8 text-gray-500">No active limit orders.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="content-order-history" class="flex-1 overflow-y-auto hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="text-gray-500 sticky top-0 bg-panelBg">
+                                <tr>
+                                    <th class="pb-1">Time</th>
+                                    <th class="pb-1">Pair</th>
+                                    <th class="pb-1">Side</th>
+                                    <th class="pb-1">Executed Price</th>
+                                    <th class="pb-1">Amount</th>
+                                    <th class="pb-1 text-right">Total USDT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderHistoryTableBody" class="divide-y divide-borderBg/40 text-gray-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Book & Execution Form -->
+            <div class="lg:col-span-4 flex flex-col gap-2.5">
+                <div class="bg-panelBg border border-borderBg rounded-xl p-3 flex-1 min-h-[260px] flex flex-col">
+                    <div class="flex items-center justify-between pb-2 border-b border-borderBg/60 text-xs font-bold text-gray-300">
+                        <span>Order Book</span>
+                        <span class="text-gray-500 font-normal">Spread: 0.01 USDT</span>
+                    </div>
+                    <div id="orderBookAsks" class="flex-1 overflow-hidden flex flex-col justify-end text-xs space-y-0.5 mt-1"></div>
+                    <div class="my-2 py-1 border-y border-borderBg/80 flex items-center justify-between px-1">
+                        <span id="obCurrentPrice" class="text-base font-bold text-tradeGreen text-glow-green">$64,250.00</span>
+                        <span class="text-[10px] text-gray-400">Live Engine</span>
+                    </div>
+                    <div id="orderBookBids" class="flex-1 overflow-hidden flex flex-col justify-start text-xs space-y-0.5"></div>
+                </div>
+
+                <div class="bg-panelBg border border-borderBg rounded-xl p-3 flex flex-col">
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-darkBg rounded-lg mb-3">
+                        <button onclick="setOrderSide('BUY')" id="btn-side-buy" class="py-1.5 rounded font-bold text-xs bg-tradeGreen text-white shadow-sm">BUY</button>
+                        <button onclick="setOrderSide('SELL')" id="btn-side-sell" class="py-1.5 rounded font-bold text-xs text-gray-400 hover:text-white">SELL</button>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <div class="flex justify-between text-[11px] text-gray-400">
+                            <span>Available:</span>
+                            <span id="orderAvailBalance" class="font-bold text-gray-200">0.00 USDT</span>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1">Amount</label>
+                            <input type="number" id="orderAmountInput" oninput="calculateOrderTotal()" placeholder="0.00" step="0.001" class="w-full bg-darkBg border border-borderBg rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono">
+                        </div>
+                        <div class="pt-1 flex justify-between text-xs">
+                            <span class="text-gray-400">Order Value:</span>
+                            <span id="orderTotalVal" class="font-mono font-bold text-white">0.00 USDT</span>
+                        </div>
+                        <button onclick="executeOrder()" id="btnSubmitOrder" class="w-full py-2.5 rounded-lg font-bold text-xs text-white bg-tradeGreen hover:opacity-90 transition">
+                            BUY BTC
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: PORTFOLIO WALLET & ADDRESS GENERATOR -->
+        <div id="view-portfolio" class="hidden flex-1 flex flex-col gap-4">
+            <div class="bg-panelBg border border-borderBg rounded-xl p-5">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Account Overview & Crypto Addresses</h2>
+                        <p class="text-xs text-gray-400 mt-1">Manage digital assets, deposit details, and custom wallet withdrawal addresses.</p>
+                    </div>
+                    <div class="bg-darkBg border border-borderBg px-4 py-3 rounded-xl flex items-center space-x-6">
+                        <div>
+                            <span class="text-[10px] text-gray-400 uppercase tracking-wider block">Total Estimated Balance</span>
+                            <span id="walletTotalUsdt" class="text-xl font-extrabold text-white font-mono">$0.00 USDT</span>
+                        </div>
+                        <button onclick="depositMockFunds()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition">
+                            + Test Faucet ($5,000 USDT)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- USER CRYPTO DEPOSIT ADDRESS MANAGEMENT -->
+                <div class="mt-6 bg-darkBg border border-borderBg rounded-xl p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Assigned Crypto Deposit Address</span>
+                            <p class="text-xs text-gray-400 mt-0.5">Your unique blockchain wallet address for incoming network transfers.</p>
+                        </div>
+                        <button onclick="generateNewAddress()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center space-x-1.5 shadow-md shadow-emerald-600/20">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                            <span>Generate New Address</span>
+                        </button>
+                    </div>
+
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="bg-panelBg p-3 rounded-lg border border-borderBg flex justify-between items-center">
+                            <div>
+                                <span class="text-[10px] text-gray-400 block font-semibold">USDT (TRC-20) Address</span>
+                                <span id="displayUsdtAddress" class="text-xs font-mono text-white font-bold tracking-tight">Not generated yet</span>
+                            </div>
+                            <button onclick="copyToClipboard('displayUsdtAddress')" class="text-gray-400 hover:text-white p-1 rounded hover:bg-borderBg">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="bg-panelBg p-3 rounded-lg border border-borderBg flex justify-between items-center">
+                            <div>
+                                <span class="text-[10px] text-gray-400 block font-semibold">ETH / ERC-20 Address</span>
+                                <span id="displayEthAddress" class="text-xs font-mono text-white font-bold tracking-tight">Not generated yet</span>
+                            </div>
+                            <button onclick="copyToClipboard('displayEthAddress')" class="text-gray-400 hover:text-white p-1 rounded hover:bg-borderBg">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Asset Table -->
+                <div class="mt-6 overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="text-xs text-gray-400 border-b border-borderBg uppercase">
+                            <tr>
+                                <th class="pb-3">Asset</th>
+                                <th class="pb-3">Available Balance</th>
+                                <th class="pb-3">Estimated Value (USDT)</th>
+                                <th class="pb-3 text-right">Quick Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="walletTableBody" class="divide-y divide-borderBg/60 text-gray-200 font-mono"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: BROKER PORTAL -->
+        <div id="view-broker" class="hidden flex-1 flex flex-col gap-4">
+            <div class="bg-panelBg border border-borderBg rounded-xl p-4 flex items-center justify-between">
+                <h2 class="text-base font-bold text-white">Broker Administrator Console</h2>
+                <span class="text-xs text-indigo-400 font-bold bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">Master Controller</span>
+            </div>
+            <div class="bg-panelBg border border-borderBg rounded-xl p-4 flex-1">
+                <h3 class="text-sm font-bold text-white mb-3">User Directory & KYC Permissions</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="text-gray-400 border-b border-borderBg uppercase">
+                            <tr>
+                                <th class="pb-2">User / Email</th>
+                                <th class="pb-2">Role</th>
+                                <th class="pb-2">KYC Level</th>
+                                <th class="pb-2">Deposit Address</th>
+                                <th class="pb-2 text-right">Approval Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="brokerUserTableBody" class="divide-y divide-borderBg/50 text-gray-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- KYC VERIFICATION MODAL -->
+    <div id="kycModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-panelBg border border-borderBg rounded-2xl w-full max-w-xl p-6 relative shadow-2xl overflow-y-auto max-h-[90vh]">
+            <button onclick="closeKycModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">KYC Identity Verification</h3>
+                    <p class="text-xs text-gray-400">Complete legal compliance to unlock full trading limits.</p>
+                </div>
+            </div>
+
+            <form id="kycForm" onsubmit="submitKycVerification(event)" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Full Legal Name</label>
+                        <input type="text" id="kycFullName" required class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Document Type</label>
+                        <select id="kycDocType" class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="ID_CARD">National ID Card (KTP/Passport)</option>
+                            <option value="DRIVER_LICENSE">Driver's License</option>
+                            <option value="PASSPORT">International Passport</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Identity Number / NIK</label>
+                        <input type="text" id="kycDocNumber" required placeholder="3204xxxxxxxxxxxx" class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Country of Residence</label>
+                        <input type="text" id="kycCountry" value="Indonesia" required class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Document & Selfie Upload Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                    <div class="border-2 border-dashed border-borderBg bg-darkBg/50 p-4 rounded-xl text-center hover:border-indigo-500 cursor-pointer" onclick="document.getElementById('fileDoc').click()">
+                        <i data-lucide="file-text" class="w-8 h-8 text-indigo-400 mx-auto mb-1"></i>
+                        <span class="block text-xs font-bold text-gray-300">Upload ID Document</span>
+                        <span class="block text-[10px] text-gray-500 mt-0.5">JPG, PNG, PDF up to 10MB</span>
+                        <input type="file" id="fileDoc" class="hidden" onchange="previewFileName(this, 'docFileName')">
+                        <span id="docFileName" class="text-[10px] text-emerald-400 block mt-1 truncate"></span>
+                    </div>
+
+                    <div class="border-2 border-dashed border-borderBg bg-darkBg/50 p-4 rounded-xl text-center hover:border-indigo-500 cursor-pointer" onclick="document.getElementById('fileSelfie').click()">
+                        <i data-lucide="camera" class="w-8 h-8 text-purple-400 mx-auto mb-1"></i>
+                        <span class="block text-xs font-bold text-gray-300">Take Live Selfie</span>
+                        <span class="block text-[10px] text-gray-500 mt-0.5">Clear facial verification photo</span>
+                        <input type="file" id="fileSelfie" accept="image/*" capture="user" class="hidden" onchange="previewFileName(this, 'selfieFileName')">
+                        <span id="selfieFileName" class="text-[10px] text-emerald-400 block mt-1 truncate"></span>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition shadow-lg shadow-indigo-600/30">
+                        Submit Identity Verification Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AUTHENTICATION MODAL (LOGIN / REGISTER) -->
+    <div id="authModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-panelBg border border-borderBg rounded-2xl w-full max-w-md p-6 relative shadow-2xl">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="flex border-b border-borderBg mb-5">
+                <button onclick="toggleAuthTab('login')" id="modalTabLogin" class="flex-1 pb-3 text-sm font-bold text-indigo-400 border-b-2 border-indigo-500">Log In</button>
+                <button onclick="toggleAuthTab('register')" id="modalTabRegister" class="flex-1 pb-3 text-sm font-bold text-gray-400 hover:text-white">Register</button>
+            </div>
+
+            <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Email Address</label>
+                    <input type="email" id="loginEmail" required class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Password</label>
+                    <input type="password" id="loginPassword" required class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-bold text-sm text-white transition">Sign In</button>
+            </form>
+
+            <form id="formRegister" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Full Name</label>
+                    <input type="text" id="regName" required class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Email Address</label>
+                    <input type="email" id="regEmail" required class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Password</label>
+                    <input type="password" id="regPassword" required class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Account Tier</label>
+                    <select id="regRole" class="w-full bg-darkBg border border-borderBg rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <option value="TRADER">Individual Trader</option>
+                        <option value="BROKER">Broker Administrator</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-bold text-sm text-white transition">Create Account</button>
+            </form>
+            <div id="authAlert" class="mt-4 p-2.5 rounded-lg text-xs hidden"></div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-10 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        lucide.createIcons();
+
+        // MOCK DATA SETUP
+        const PAIRS_DATA = {
+            'BTCUSDT': { name: 'BTC/USDT', symbol: 'BTC', price: 64250.00 },
+            'ETHUSDT': { name: 'ETH/USDT', symbol: 'ETH', price: 3450.50 },
+            'SOLUSDT': { name: 'SOL/USDT', symbol: 'SOL', price: 148.20 }
+        };
+
+        let currentPairKey = 'BTCUSDT';
+        let currentOrderSide = 'BUY';
+
+        let dbUsers = JSON.parse(localStorage.getItem('apex_users')) || [
+            {
+                id: 'usr_1',
+                name: 'Standard Trader',
+                email: 'trader@apex.com',
+                password: 'password',
+                role: 'TRADER',
+                isApproved: true,
+                isTrader: true,
+                isBroker: false,
+                kycVerified: false,
+                depositAddress: {
+                    USDT: 'T' + Array.from({length: 33}, () => Math.floor(Math.random()*36).toString(36)).join('').toUpperCase(),
+                    ETH: '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('')
+                },
+                wallet: { USDT: 10000.00, BTC: 0.25, ETH: 2.0, SOL: 15.0 }
+            }
+        ];
+
+        let currentUser = JSON.parse(localStorage.getItem('apex_session')) || null;
+        let openOrders = JSON.parse(localStorage.getItem('apex_open_orders')) || [];
+        let tradeHistory = JSON.parse(localStorage.getItem('apex_trade_history')) || [];
+
+        function saveState() {
+            localStorage.setItem('apex_users', JSON.stringify(dbUsers));
+            localStorage.setItem('apex_session', JSON.stringify(currentUser));
+            localStorage.setItem('apex_open_orders', JSON.stringify(openOrders));
+            localStorage.setItem('apex_trade_history', JSON.stringify(tradeHistory));
+        }
+
+        /* ==========================================================================
+           ADDRESS GENERATOR UTILITY (Creates address if not existing)
+           ========================================================================== */
+        function generateCryptoAddress(type) {
+            if (type === 'USDT') {
+                const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+                let res = 'T';
+                for (let i = 0; i < 33; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+                return res;
+            } else {
+                const hex = '0123456789abcdef';
+                let res = '0x';
+                for (let i = 0; i < 40; i++) res += hex.charAt(Math.floor(Math.random() * hex.length));
+                return res;
+            }
+        }
+
+        function ensureUserAddresses(user) {
+            if (!user) return;
+            if (!user.depositAddress) {
+                user.depositAddress = {};
+            }
+            if (!user.depositAddress.USDT) {
+                user.depositAddress.USDT = generateCryptoAddress('USDT');
+            }
+            if (!user.depositAddress.ETH) {
+                user.depositAddress.ETH = generateCryptoAddress('ETH');
+            }
+            saveState();
+        }
+
+        function generateNewAddress() {
+            if (!currentUser) return openAuthModal('login');
+            
+            currentUser.depositAddress = {
+                USDT: generateCryptoAddress('USDT'),
+                ETH: generateCryptoAddress('ETH')
+            };
+
+            const idx = dbUsers.findIndex(u => u.id === currentUser.id);
+            if (idx !== -1) dbUsers[idx] = currentUser;
+
+            saveState();
+            renderDepositAddresses();
+            showToast('New deposit wallet addresses generated successfully!', 'success');
+        }
+
+        function renderDepositAddresses() {
+            if (!currentUser) return;
+            ensureUserAddresses(currentUser);
+
+            const usdtEl = document.getElementById('displayUsdtAddress');
+            const ethEl = document.getElementById('displayEthAddress');
+
+            if (usdtEl) usdtEl.innerText = currentUser.depositAddress.USDT;
+            if (ethEl) ethEl.innerText = currentUser.depositAddress.ETH;
+        }
+
+        /* ==========================================================================
+           KYC VERIFICATION FLOW
+           ========================================================================== */
+        function openKycModal() {
+            if (!currentUser) return openAuthModal('login');
+            document.getElementById('kycModal').classList.remove('hidden');
+            if (currentUser.name) {
+                document.getElementById('kycFullName').value = currentUser.name;
+            }
+        }
+
+        function closeKycModal() {
+            document.getElementById('kycModal').classList.add('hidden');
+        }
+
+        function previewFileName(input, targetId) {
+            if (input.files && input.files[0]) {
+                document.getElementById(targetId).innerText = `Attached: ${input.files[0].name}`;
+            }
+        }
+
+        function submitKycVerification(e) {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const name = document.getElementById('kycFullName').value;
+            const docNum = document.getElementById('kycDocNumber').value;
+
+            currentUser.kycVerified = true;
+            currentUser.name = name;
+            currentUser.kycDocNumber = docNum;
+
+            const idx = dbUsers.findIndex(u => u.id === currentUser.id);
+            if (idx !== -1) dbUsers[idx] = currentUser;
+
+            saveState();
+            updateUserUI();
+            closeKycModal();
+            showToast('KYC Documents Verified Successfully!', 'success');
+        }
+
+        /* ==========================================================================
+           AUTH & USER MANAGEMENT
+           ========================================================================== */
+        function openAuthModal(tab) {
+            document.getElementById('authModal').classList.remove('hidden');
+            toggleAuthTab(tab);
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+
+        function toggleAuthTab(tab) {
+            const formLogin = document.getElementById('formLogin');
+            const formRegister = document.getElementById('formRegister');
+            if (tab === 'login') {
+                formLogin.classList.remove('hidden');
+                formRegister.classList.add('hidden');
+            } else {
+                formLogin.classList.add('hidden');
+                formRegister.classList.remove('hidden');
+            }
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const role = document.getElementById('regRole').value;
+
+            if (dbUsers.some(u => u.email === email)) {
+                showToast('Email already exists', 'error');
+                return;
+            }
+
+            const newUser = {
+                id: 'usr_' + Date.now(),
+                name,
+                email,
+                password,
+                role,
+                isApproved: true,
+                isTrader: true,
+                isBroker: role === 'BROKER',
+                kycVerified: false,
+                depositAddress: {
+                    USDT: generateCryptoAddress('USDT'),
+                    ETH: generateCryptoAddress('ETH')
+                },
+                wallet: { USDT: 5000.00, BTC: 0.0, ETH: 0.0, SOL: 0.0 }
+            };
+
+            dbUsers.push(newUser);
+            currentUser = newUser;
+            saveState();
+            closeAuthModal();
+            updateUserUI();
+            showToast('Account registered with unique wallet addresses!', 'success');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const user = dbUsers.find(u => u.email === email && u.password === password);
+            if (!user) {
+                showToast('Invalid credentials', 'error');
+                return;
+            }
+
+            currentUser = user;
+            ensureUserAddresses(currentUser);
+            saveState();
+            closeAuthModal();
+            updateUserUI();
+            showToast(`Welcome back, ${user.name}!`, 'success');
+        }
+
+        function logout() {
+            currentUser = null;
+            saveState();
+            updateUserUI();
+            switchView('trading');
+            showToast('Logged out.', 'info');
+        }
+
+        function updateUserUI() {
+            const authBtns = document.getElementById('auth-buttons');
+            const userProfile = document.getElementById('user-profile');
+            const navBroker = document.getElementById('nav-broker');
+
+            if (currentUser) {
+                authBtns.classList.add('hidden');
+                userProfile.classList.remove('hidden');
+                
+                document.getElementById('user-display-name').innerText = currentUser.name;
+                document.getElementById('user-email-display').innerText = currentUser.email;
+                document.getElementById('user-role-badge').innerText = currentUser.role;
+
+                const kycBadge = document.getElementById('user-kyc-badge');
+                const menuKyc = document.getElementById('menu-kyc-status');
+
+                if (currentUser.kycVerified) {
+                    kycBadge.innerText = 'Verified';
+                    kycBadge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold cursor-pointer bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                    if (menuKyc) {
+                        menuKyc.innerText = 'Approved';
+                        menuKyc.className = "text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400";
+                    }
+                } else {
+                    kycBadge.innerText = 'Unverified';
+                    kycBadge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold cursor-pointer bg-red-500/20 text-red-400 border border-red-500/30 hover:opacity-80";
+                    if (menuKyc) {
+                        menuKyc.innerText = 'Action Required';
+                        menuKyc.className = "text-[9px] px-1 rounded bg-amber-500/20 text-amber-400";
+                    }
+                }
+
+                if (currentUser.isBroker) navBroker.classList.remove('hidden');
+                else navBroker.classList.add('hidden');
+            } else {
+                authBtns.classList.remove('hidden');
+                userProfile.classList.add('hidden');
+                navBroker.classList.add('hidden');
+            }
+
+            renderDepositAddresses();
+            renderWalletTable();
+            refreshBrokerData();
+        }
+
+        /* ==========================================================================
+           TRADING ENGINE SIMULATION
+           ========================================================================== */
+        let chartInstance = null;
+        function initChart() {
+            const ctx = document.getElementById('cryptoChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25'],
+                    datasets: [{
+                        label: 'BTC/USDT',
+                        data: [64100, 64150, 64200, 64180, 64220, 64250],
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function setOrderSide(side) {
+            currentOrderSide = side;
+            document.getElementById('btnSubmitOrder').innerText = `${side} ${PAIRS_DATA[currentPairKey].symbol}`;
+        }
+
+        function calculateOrderTotal() {
+            const amount = parseFloat(document.getElementById('orderAmountInput').value) || 0;
+            const price = PAIRS_DATA[currentPairKey].price;
+            document.getElementById('orderTotalVal').innerText = `${(amount * price).toFixed(2)} USDT`;
+        }
+
+        function executeOrder() {
+            if (!currentUser) return openAuthModal('login');
+            const amount = parseFloat(document.getElementById('orderAmountInput').value);
+            if (!amount || amount <= 0) return showToast('Enter valid amount', 'error');
+
+            const price = PAIRS_DATA[currentPairKey].price;
+            const total = amount * price;
+            const symbol = PAIRS_DATA[currentPairKey].symbol;
+
+            if (currentOrderSide === 'BUY') {
+                if (currentUser.wallet.USDT < total) return showToast('Insufficient USDT balance', 'error');
+                currentUser.wallet.USDT -= total;
+                currentUser.wallet[symbol] = (currentUser.wallet[symbol] || 0) + amount;
+            } else {
+                if ((currentUser.wallet[symbol] || 0) < amount) return showToast(`Insufficient ${symbol}`, 'error');
+                currentUser.wallet[symbol] -= amount;
+                currentUser.wallet.USDT += total;
+            }
+
+            saveState();
+            renderWalletTable();
+            showToast('Order executed successfully!', 'success');
+        }
+
+        function renderWalletTable() {
+            if (!currentUser) return;
+            const tbody = document.getElementById('walletTableBody');
+            const wallet = currentUser.wallet;
+
+            const assets = [
+                { name: 'Tether USD', symbol: 'USDT', balance: wallet.USDT || 0, price: 1.00 },
+                { name: 'Bitcoin', symbol: 'BTC', balance: wallet.BTC || 0, price: PAIRS_DATA['BTCUSDT'].price },
+                { name: 'Ethereum', symbol: 'ETH', balance: wallet.ETH || 0, price: PAIRS_DATA['ETHUSDT'].price },
+                { name: 'Solana', symbol: 'SOL', balance: wallet.SOL || 0, price: PAIRS_DATA['SOLUSDT'].price }
+            ];
+
+            let totalVal = 0;
+            tbody.innerHTML = assets.map(a => {
+                const val = a.balance * a.price;
+                totalVal += val;
+                return `
+                    <tr class="hover:bg-hoverBg/50">
+                        <td class="py-3 font-bold text-white">${a.name} <span class="text-xs text-gray-400 font-normal ml-1">${a.symbol}</span></td>
+                        <td>${a.balance.toFixed(4)} ${a.symbol}</td>
+                        <td class="font-bold text-gray-200">$${val.toFixed(2)}</td>
+                        <td class="text-right">
+                            <button onclick="switchView('trading')" class="text-xs text-indigo-400 hover:underline">Trade</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('walletTotalUsdt').innerText = `$${totalVal.toFixed(2)} USDT`;
+        }
+
+        function depositMockFunds() {
+            if (!currentUser) return openAuthModal('login');
+            currentUser.wallet.USDT = (currentUser.wallet.USDT || 0) + 5000;
+            saveState();
+            renderWalletTable();
+            showToast('$5,000 USDT added to wallet!', 'success');
+        }
+
+        function refreshBrokerData() {
+            const tbody = document.getElementById('brokerUserTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = dbUsers.map(u => `
+                <tr class="hover:bg-hoverBg/50">
+                    <td class="py-3 font-bold text-white">${u.name} <span class="block text-[10px] text-gray-400 font-normal">${u.email}</span></td>
+                    <td>${u.role}</td>
+                    <td><span class="px-2 py-0.5 rounded text-[10px] ${u.kycVerified ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${u.kycVerified ? 'Verified' : 'Pending'}</span></td>
+                    <td class="font-mono text-[10px]">${u.depositAddress ? u.depositAddress.USDT : 'None'}</td>
+                    <td class="text-right">
+                        <button onclick="approveKycAdmin('${u.id}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold">Approve KYC</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function approveKycAdmin(userId) {
+            const u = dbUsers.find(user => user.id === userId);
+            if (u) {
+                u.kycVerified = true;
+                saveState();
+                refreshBrokerData();
+                showToast(`Approved KYC for ${u.name}`, 'success');
+            }
+        }
+
+        function switchView(view) {
+            document.getElementById('view-trading').classList.add('hidden');
+            document.getElementById('view-portfolio').classList.add('hidden');
+            document.getElementById('view-broker').classList.add('hidden');
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+        }
+
+        function copyToClipboard(id) {
+            const txt = document.getElementById(id).innerText;
+            navigator.clipboard.writeText(txt);
+            showToast('Address copied to clipboard!', 'info');
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `px-4 py-2.5 rounded-lg border text-xs font-semibold bg-gray-800 text-white shadow-xl`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        window.onload = function() {
+            initChart();
+            updateUserUI();
+        };
+    </script>
+</body>
+  </html>
